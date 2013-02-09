@@ -22,6 +22,7 @@ setup(
     py_modules=['slowdown'],
     packages=[
         'slowdown',
+        'slowdown.migrations',
     ],
     description='Middleware to slow down pageloads for unwanted users',
     long_description=long_desc,
