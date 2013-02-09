@@ -13,5 +13,7 @@ class SlowDownMiddleware(object):
             try:
                 slowdown = UserSlowDown.objects.get_slowdown(user)
                 slowdown.slowdown()
+                if slowdown.should_fail():
+                    return slowdown.get_failure_response()
             except UserSlowDown.DoesNotExist:
                 pass

@@ -6,6 +6,7 @@ from random import random
 from django.db import models
 from django.conf import settings
 from django.core.cache import cache
+from django.http import HttpResponse
 from django.contrib.auth.models import User
 
 
@@ -18,15 +19,15 @@ SLOWDOWN_USER_CACHE_TIMEOUT = getattr(settings,
 
 
 def _populate_cache():
-    val = list(UserSlowDown.objects.all().values_list('pk', flat=True))
+    val = list(UserSlowDown.objects.all().values_list('user__id', flat=True))
     cache.set(SLOWDOWN_USER_IDS_CACHE_KEY, val, SLOWDOWN_USER_CACHE_TIMEOUT)
 
 
 def _slowed_down_user_ids():
     val = cache.get(SLOWDOWN_USER_IDS_CACHE_KEY)
     if val is None:
-        val = list(UserSlowDown.objects.all().values_list('pk', flat=True))
-        cache.set(SLOWDOWN_USER_IDS_CACHE_KEY, val, SLOWDOWN_USER_CACHE_TIMEOUT)
+        _populate_cache()
+        val = cache.get(SLOWDOWN_USER_IDS_CACHE_KEY)
 
     return val
 
@@ -54,6 +55,9 @@ class UserSlowDown(models.Model):
     slowdown_value = models.FloatField(default=1.0)
     slowdown_min_value = models.FloatField(default=0.0,
         help_text='Only used with random slowdowns')
+    sporadic_failure = models.BooleanField(default=False)
+    failure_rate = models.FloatField(help_text='% float between 0 and 1',
+        default=0.0)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -76,9 +80,21 @@ class UserSlowDown(models.Model):
 
     def slowdown(self):
         timeout = self.get_slowdown()
-        print 'Sleeping for', timeout
         sleep(timeout)
 
     def save(self, *args, **kwargs):
         super(UserSlowDown, self).save(*args, **kwargs)
         _populate_cache()
+
+    def delete(self, *args, **kwargs):
+        super(UserSlowDown, self).delete(*args, **kwargs)
+        _populate_cache()
+
+    def get_failure_response(self):
+        return HttpResponse('Error, Try again', status=400)
+
+    def should_fail(self):
+        if not self.sporadic_failure:
+            return False
+        return random() < self.failure_rate        
+
