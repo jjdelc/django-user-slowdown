@@ -2,12 +2,12 @@
 
 from django.contrib import admin
 
-from slowdown.models import UserSlowdown
+from slowdown.models import UserSlowDown
 
 
-class UserSlowdownAdmin(admin.ModelAdmin):
+class UserSlowDownAdmin(admin.ModelAdmin):
     list_display = ['user', 'created_at', 'slowdown_type']
     list_filter = ['slowdown_type']
 
 
-admin.site.register(UserSlowdown, UserSlowdownAdmin)
+admin.site.register(UserSlowDown, UserSlowDownAdmin)
