@@ -17,6 +17,11 @@ SLOWDOWN_USER_CACHE_TIMEOUT = getattr(settings,
     'SLOWDOWN_USER_CACHE_TIMEOUT', 60 * 60 * 24 * 7) # 1 week
 
 
+def _populate_cache():
+    val = list(UserSlowDown.objects.all().values_list('pk', flat=True))
+    cache.set(SLOWDOWN_USER_IDS_CACHE_KEY, val, SLOWDOWN_USER_CACHE_TIMEOUT)
+
+
 def _slowed_down_user_ids():
     val = cache.get(SLOWDOWN_USER_IDS_CACHE_KEY)
     if val is None:
@@ -46,8 +51,8 @@ class UserSlowDown(models.Model):
     user = models.ForeignKey(User)
     slowdown_type = models.PositiveIntegerField(choices=SLOWDOWN_TYPES,
         default=RANDOM_SLOWDOWN)
-    slowdown_value = models.FloarField(default=1.0)
-    slowdown_min_value = models.FloarField(default=0.0,
+    slowdown_value = models.FloatField(default=1.0)
+    slowdown_min_value = models.FloatField(default=0.0,
         help_text='Only used with random slowdowns')
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -63,11 +68,17 @@ class UserSlowDown(models.Model):
     def _fixed_slowdown(self, value):
         return value
 
-    def _random_slowdown(self, min_val, max_value):
+    def _random_slowdown(self, min_val, max_val):
         return min_val + random() * (max_val - min_val)
 
     def is_fixed_slowdown(self):
         return self.slowdown_type == self.FIXED_SLOWDOWN
 
     def slowdown(self):
-        sleep(self.get_slowdown())
+        timeout = self.get_slowdown()
+        print 'Sleeping for', timeout
+        sleep(timeout)
+
+    def save(self, *args, **kwargs):
+        super(UserSlowDown, self).save(*args, **kwargs)
+        _populate_cache()
