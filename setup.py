@@ -23,6 +23,6 @@ setup(
     packages=[
         'slowdown',
     ],
-    description='Middleware to slow down pageloads for unwanted users'
+    description='Middleware to slow down pageloads for unwanted users',
     long_description=long_desc,
 )
